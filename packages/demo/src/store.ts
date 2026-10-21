@@ -9,7 +9,24 @@ export const AVAILABLE_TRANSPORTS: ReadonlyArray<{
 	{ value: "libcurl", label: "Libcurl" },
 	{ value: "epoxy", label: "Epoxy" },
 ];
-const DEFAULT_WISP_URL = import.meta.env.VITE_WISP_URL;
+const ENV_WISP_URL = import.meta.env.VITE_WISP_URL;
+
+function sameOriginWispUrl() {
+	return `${location.protocol === "https:" ? "wss:" : "ws:"}//${
+		location.host
+	}/wisp/`;
+}
+
+function isLoopbackHostname(hostname: string) {
+	return (
+		hostname === "localhost" ||
+		hostname === "127.0.0.1" ||
+		hostname === "::1" ||
+		hostname === "[::1]"
+	);
+}
+
+const DEFAULT_WISP_URL = ENV_WISP_URL || sameOriginWispUrl();
 const DEFAULT_TRANSPORT: AvailableTransports = "libcurl";
 const DEFAULT_HOME_URL = "https://google.com";
 const DEFAULT_MAX_REQUESTS = 200;
@@ -27,6 +44,22 @@ export const demoSettingsStore = createStore(
 		autosave: "auto",
 	}
 );
+
+// A loopback wisp URL (e.g. ws://localhost:4142/) only works when the page is
+// served from that same machine. When the app is opened through a remote
+// preview/host URL, fall back to the page origin, where the dev server proxies
+// /wisp/ to the local wisp server. Explicit non-loopback URLs are left alone.
+try {
+	const storedWisp = new URL(demoSettingsStore.wispUrl);
+	if (
+		isLoopbackHostname(storedWisp.hostname) &&
+		!isLoopbackHostname(location.hostname)
+	) {
+		demoSettingsStore.wispUrl = normalizeWispUrl(sameOriginWispUrl());
+	}
+} catch {
+	// malformed persisted value: leave it, Settings can fix it
+}
 
 export function normalizeWispUrl(value: string) {
 	const trimmed = value.trim();
