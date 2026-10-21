@@ -29,11 +29,11 @@ const branch = execSync("git rev-parse --abbrev-ref HEAD", {
 const packagejson = JSON.parse(await fs.readFile("./package.json", "utf-8"));
 const version = packagejson.version;
 
-// Default to port 3000 so this server never collides with other proxies
-// running on the same machine (e.g. one bound to 8080). Override with
-// DEMO_PORT=5000 (or PORT) without editing any files.
+// Default port 4141 (never 8080, so it won't collide with other proxies on
+// the same machine). Override with DEMO_PORT=5000 (or PORT) without editing
+// any files.
 const DEMO_PORT =
-	process.env.PORT || process.env.DEMO_PORT || 3000;
+	process.env.PORT || process.env.DEMO_PORT || 4141;
 const WISP_PORT = process.env.WISP_PORT || 4142;
 
 if (process.env.VITE_WISP_URL) {
