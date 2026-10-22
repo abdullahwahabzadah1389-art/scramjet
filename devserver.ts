@@ -54,6 +54,13 @@ wispserver.on("upgrade", (req, socket, head) => {
 	wisp.routeRequest(req, socket, head);
 });
 
+// Heavy games/WebGL sessions keep sockets alive across long idle bursts;
+// Node's default 5s keep-alive would close them mid-session (and a reverse
+// proxy in front would 502). Keep connections warm for 2 minutes, with
+// headers allowed slightly longer than keep-alive per Node's constraint.
+wispserver.keepAliveTimeout = 120_000;
+wispserver.headersTimeout = 130_000;
+
 // Loopback only: the browser reaches wisp through the Vite /wisp/ proxy on
 // the main port, so listening on 0.0.0.0 would just publish an open TCP
 // relay on the LAN when self-hosting.
@@ -68,6 +75,16 @@ const server = await createServer({
 		strictPort: true,
 	},
 });
+
+// The main HTTP server serves game assets and proxies the /wisp/ WebSocket
+// upgrades — apply the same long keep-alive as the wisp relay so persistent
+// data streams and long-running sockets are never timed out mid-session.
+const applyStreamTimeouts = (srv: typeof server.httpServer) => {
+	if (!srv) return;
+	srv.keepAliveTimeout = 120_000;
+	srv.headersTimeout = 130_000;
+};
+applyStreamTimeouts(server.httpServer);
 
 warnOnUrlEscape(server);
 
@@ -160,7 +177,33 @@ server.middlewares.stack.unshift({
 	handle: compressionMiddleware,
 });
 
+// Vite's SPA fallback rewrites *any* unmatched GET accepting text/html or
+// */* to index.html — including missing scripts and escaped /~/sj/ proxy
+// paths. Browsers request scripts with `Accept: */*`, so a missing or
+// re-wrapped script would receive HTML, fail to parse and block the whole
+// script chain (black screens in proxied games). File-backed assets were
+// already tried by the static middleware above, so asset-looking requests
+// that reach the fallback were genuinely not found: let them 404 cleanly
+// instead. HTML navigations keep the SPA fallback.
+const ASSET_FALLBACK_EXEMPT =
+	/\.(m?js|cjs|jsx|wasm|css|map|json|woff2?|ttf|png|jpe?g|gif|webp|ico|mp4|webm|txt|svg)([?#]|$)/i;
+for (const mw of server.middlewares.stack) {
+	if (mw.handle?.name !== "viteHtmlFallbackMiddleware") continue;
+	const original = mw.handle as (req: any, res: any, next: any) => void;
+	mw.handle = ((req: any, res: any, next: any) => {
+		const path = (req.url ?? "").split("?")[0] ?? "";
+		if (
+			(req.method === "GET" || req.method === "HEAD") &&
+			ASSET_FALLBACK_EXEMPT.test(path)
+		) {
+			return next();
+		}
+		return original(req, res, next);
+	}) as typeof mw.handle;
+}
+
 await server.listen();
+applyStreamTimeouts(server.httpServer);
 
 const accent = (text: string) => chalk.hex("#f1855bff").bold(text);
 const highlight = (text: string) => chalk.hex("#fdd76cff").bold(text);
