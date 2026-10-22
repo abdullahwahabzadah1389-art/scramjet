@@ -28,7 +28,30 @@ export async function doHandleFetch(
 	handler: ScramjetFetchHandler,
 	request: ScramjetFetchRequest
 ): Promise<ScramjetFetchResponse> {
-	const parsed = parseRequest(request, handler);
+	let parsed: ScramjetFetchParsed;
+	try {
+		parsed = parseRequest(request, handler);
+	} catch (err) {
+		// Only the "unroutable URL" validation failure gets a graceful
+		// fallback. Security aborts (e.g. the same-origin check) keep
+		// propagating so they still reject the request.
+		if (!(err as Error & { scramjetUnroutableUrl?: true })?.scramjetUnroutableUrl) {
+			throw err;
+		}
+		dbg.warn(
+			"unroutable proxied request, responding 404:",
+			request.rawUrl.href,
+			(err as Error).message
+		);
+		const headers = new ScramjetHeaders();
+		headers.set("content-type", "text/plain; charset=utf-8");
+		return {
+			body: "unroutable proxied url",
+			headers,
+			status: 404,
+			statusText: "Not Found",
+		};
+	}
 
 	if (isBlobOrDataUrl(parsed.url)) {
 		return handleBlobOrDataUrlFetch(handler, request, parsed);

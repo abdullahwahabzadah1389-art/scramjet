@@ -65,10 +65,18 @@ export function parseRequest(
 
 	const hadExtraParams = Object_keys(extras).length > 0;
 
-	if (!_URL.canParse(unrewriteUrl(strippedUrl, handler.context))) {
-		throw new Error(`unable to parse rewritten url: ${strippedUrl.href}`);
+	// Unrewrite once: this both avoids the double "unexpected url"-class
+	// logging of the previous two-call version and lets us fail cleanly when
+	// the stripped URL can't be resolved to a fetchable target.
+	const unrewritten = unrewriteUrl(strippedUrl, handler.context);
+	if (!_URL.canParse(unrewritten)) {
+		const err = new Error(
+			`unable to parse rewritten url: ${strippedUrl.href}`
+		) as Error & { scramjetUnroutableUrl?: true };
+		err.scramjetUnroutableUrl = true;
+		throw err;
 	}
-	const url = new _URL(unrewriteUrl(strippedUrl, handler.context));
+	const url = new _URL(unrewritten);
 
 	if (url.origin === new _URL(request.rawUrl).origin) {
 		// uh oh!

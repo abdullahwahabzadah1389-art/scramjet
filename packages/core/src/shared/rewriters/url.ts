@@ -226,6 +226,15 @@ export function unrewriteUrl(url: string | URL, context: ScramjetContext) {
 	) {
 		return url;
 	} else if (
+		String_startsWith(url, "data:") ||
+		String_startsWith(url, "ws:") ||
+		String_startsWith(url, "wss:")
+	) {
+		// data: URLs are self-contained (never routed through the proxy), and
+		// ws:/wss: URLs intentionally bypass prefixing — they go straight to
+		// the transport layer. Both are their own inverse: pass through.
+		return url;
+	} else if (
 		String_startsWith(url, "http:") ||
 		String_startsWith(url, "https:")
 	) {
@@ -236,7 +245,10 @@ export function unrewriteUrl(url: string | URL, context: ScramjetContext) {
 			return url;
 		}
 		if (!String_startsWith(realUrl.href, context.prefix.href)) {
-			dbg.error("unrewriteurl: unexpected url", url);
+			// A raw origin URL inside a proxied context. This means something
+			// escaped rewriting (or a getter surfaced a real URL); it is passed
+			// through unchanged — only the truly leaky cases are worth a log.
+			dbg.warn("unrewriteurl: url was not prefixed", url);
 			return url;
 		}
 		const decodedHash = context.interface.codecDecode(realUrl.hash.slice(1));
@@ -252,7 +264,11 @@ export function unrewriteUrl(url: string | URL, context: ScramjetContext) {
 	} else if (url == "") {
 		return url;
 	} else {
-		dbg.error("unrewriteurl: unexpected url", url);
+		// Relative references ("./asset.wasm", "/img.png"), opaque schemes
+		// (filesystem:, chrome-error:, intent:, …) and anything else the page
+		// may hand us were never prefixed with the scramjet prefix, so
+		// returning them unchanged is the correct inverse of rewriteUrl —
+		// this must not throw or spam the console for engine-driven requests.
 		return url;
 	}
 }
