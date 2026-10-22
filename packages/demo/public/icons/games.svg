@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <rect width="256" height="256" rx="0" fill="#ffffff"/>
+  <g fill="#16283c">
+    <polygon points="52,26 96,92 74,94 112,158 60,104 82,102 46,58"/>
+    <polygon points="204.0,26 160.0,92 182.0,94 144.0,158 196.0,104 174.0,102 210.0,58"/>
+    <path d="M247.44 173.75a.7.7 0 0 0 0-.14l-16.39-84.17v-.18A60.08 60.08 0 0 0 172 40H83.89a59.88 59.88 0 0 0-59 49.52L8.58 173.61a.7.7 0 0 0 0 .14a36 36 0 0 0 60.9 31.71l.35-.37L109.52 160h37l39.71 45.09c.11.13.23.25.35.37A36.08 36.08 0 0 0 212 216a36 36 0 0 0 35.43-42.25Z"/>
+  </g>
+  <rect x="56" y="106" width="46" height="19" rx="7" fill="#fff"/>
+  <rect x="69.5" y="92.5" width="19" height="46" rx="7" fill="#fff"/>
+  <rect x="110" y="106" width="29" height="16" rx="8" fill="#fff"/>
+  <rect x="143" y="106" width="29" height="16" rx="8" fill="#fff"/>
+  <circle cx="202" cy="96" r="9" fill="#fff"/>
+  <circle cx="220" cy="116" r="9" fill="#fff"/>
+  <circle cx="202" cy="136" r="9" fill="#fff"/>
+  <circle cx="184" cy="116" r="9" fill="#fff"/>
+</svg>
